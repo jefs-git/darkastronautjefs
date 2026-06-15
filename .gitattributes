@@ -1,0 +1,6 @@
+# Garante quebras de linha LF para scripts shell (necessario no Linux/Azure).
+# Sem isso, o autocrlf do Windows pode gravar CRLF e quebrar o startup.sh.
+*.sh text eol=lf
+
+# Demais arquivos: normaliza para LF no repositorio.
+* text=auto eol=lf
