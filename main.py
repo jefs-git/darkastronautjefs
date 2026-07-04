@@ -54,8 +54,17 @@ class SinistroCreate(SinistroBase):
     Status_Processamento: Optional[str] = Field(None, max_length=50)
 
 
-class StatusUpdate(BaseModel):
-    Status_Processamento: str = Field(..., max_length=50, examples=["processing"])
+class SinistroUpdate(BaseModel):
+    """Atualizacao parcial: envie apenas os campos que deseja alterar.
+
+    Todos os campos sao opcionais; somente os presentes no JSON sao
+    persistidos (os ausentes ficam inalterados no banco).
+    """
+
+    Status_Processamento: Optional[str] = Field(None, max_length=50, examples=["processing"])
+    Valor_Estimado: Optional[Decimal] = Field(None, examples=[1234.56])
+    Email: Optional[str] = Field(None, max_length=255, examples=["maria.silva@exemplo.com"])
+    Phone: Optional[str] = Field(None, max_length=20, examples=["+55 11 99999-0000"])
 
 
 class Sinistro(SinistroBase):
@@ -158,15 +167,27 @@ def obter_sinistro(
 @app.patch(
     "/sinistros/{sinistro_id}", response_model=Sinistro, tags=["sinistros"]
 )
-def atualizar_status(
+def atualizar_sinistro(
     sinistro_id: int,
-    payload: StatusUpdate,
+    payload: SinistroUpdate,
     conn: pyodbc.Connection = Depends(get_db),
 ):
+    # exclude_unset=True: apenas os campos realmente enviados no JSON entram
+    # no UPDATE (atualizacao parcial). Enviar Email/Phone como null os zera;
+    # omiti-los mantem o valor atual.
+    campos = payload.model_dump(exclude_unset=True)
+    if not campos:
+        raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+
+    # As chaves vem da definicao do schema (nao da entrada do usuario), entao a
+    # clausula SET e segura; os valores seguem parametrizados via placeholders.
+    set_clause = ", ".join(f"{coluna} = ?" for coluna in campos)
+    valores = list(campos.values())
+
     cur = conn.cursor()
     cur.execute(
-        "UPDATE Sinistros SET Status_Processamento = ? WHERE ID_Sinistro = ?",
-        payload.Status_Processamento,
+        f"UPDATE Sinistros SET {set_clause} WHERE ID_Sinistro = ?",
+        *valores,
         sinistro_id,
     )
     if cur.rowcount == 0:
