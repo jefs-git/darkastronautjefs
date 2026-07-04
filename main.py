@@ -2,11 +2,15 @@
 
 Tabela Sinistros:
     ID_Sinistro          int IDENTITY (PK)
-    Numero_Apolice       varchar  NOT NULL
-    Data_Ocorrencia      date     NOT NULL
-    Valor_Estimado       decimal  NULL
-    Status_Processamento varchar  NULL  (default "new")
-    Data_Registro        datetime NULL
+    Numero_Apolice       varchar       NOT NULL
+    Data_Ocorrencia      date          NOT NULL
+    Valor_Estimado       decimal       NULL
+    Status_Processamento varchar       NULL  (default "new")
+    Data_Registro        datetime      NULL
+    User_ID              int           NOT NULL  (identificador do solicitante)
+    Nome_Solicitante     varchar(150)  NOT NULL  (nome do solicitante)
+    Email                varchar(255)  NULL      (e-mail do solicitante)
+    Phone                varchar(20)   NULL      (telefone do solicitante)
 """
 import datetime
 from decimal import Decimal
@@ -33,6 +37,16 @@ class SinistroBase(BaseModel):
     Numero_Apolice: str = Field(..., max_length=255, examples=["APOL-2026-001"])
     Data_Ocorrencia: datetime.date = Field(..., examples=["2026-06-14"])
     Valor_Estimado: Optional[Decimal] = Field(None, examples=[1234.56])
+    # Dados do solicitante
+    # User_ID: obrigatorio (identificador do usuario solicitante)
+    User_ID: int = Field(..., examples=[42])
+    # Nome_Solicitante: obrigatorio, 1 a 150 caracteres
+    Nome_Solicitante: str = Field(..., min_length=1, max_length=150, examples=["Maria Silva"])
+    # Email: opcional, ate 255 caracteres
+    # (validacao com EmailStr exigiria pydantic[email], que o projeto nao usa)
+    Email: Optional[str] = Field(None, max_length=255, examples=["maria.silva@exemplo.com"])
+    # Phone: opcional, ate 20 caracteres
+    Phone: Optional[str] = Field(None, max_length=20, examples=["+55 11 99999-0000"])
 
 
 class SinistroCreate(SinistroBase):
@@ -59,12 +73,17 @@ def row_to_sinistro(row) -> Sinistro:
         Valor_Estimado=row.Valor_Estimado,
         Status_Processamento=row.Status_Processamento,
         Data_Registro=row.Data_Registro,
+        User_ID=row.User_ID,
+        Nome_Solicitante=row.Nome_Solicitante,
+        Email=row.Email,
+        Phone=row.Phone,
     )
 
 
 SELECT_FIELDS = (
     "ID_Sinistro, Numero_Apolice, Data_Ocorrencia, "
-    "Valor_Estimado, Status_Processamento, Data_Registro"
+    "Valor_Estimado, Status_Processamento, Data_Registro, "
+    "User_ID, Nome_Solicitante, Email, Phone"
 )
 
 
@@ -99,15 +118,20 @@ def criar_sinistro(
         """
         INSERT INTO Sinistros
             (Numero_Apolice, Data_Ocorrencia, Valor_Estimado,
-             Status_Processamento, Data_Registro)
+             Status_Processamento, Data_Registro,
+             User_ID, Nome_Solicitante, Email, Phone)
         OUTPUT INSERTED.ID_Sinistro
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         payload.Numero_Apolice,
         payload.Data_Ocorrencia,
         payload.Valor_Estimado,
         status_proc,
         datetime.datetime.now(),
+        payload.User_ID,
+        payload.Nome_Solicitante,
+        payload.Email,
+        payload.Phone,
     )
     new_id = cur.fetchone()[0]
     conn.commit()

@@ -27,6 +27,12 @@ Project_darkastronautjefs/
 | `Valor_Estimado` | decimal | nullable |
 | `Status_Processamento` | varchar | default `"new"` |
 | `Data_Registro` | datetime | preenchido no INSERT |
+| `User_ID` | int | NOT NULL — identificador do solicitante |
+| `Nome_Solicitante` | varchar(150) | NOT NULL — nome do solicitante |
+| `Email` | varchar(255) | nullable — e-mail do solicitante |
+| `Phone` | varchar(20) | nullable — telefone do solicitante |
+
+> Migração DDL destes campos: [`sql/001_add_campos_solicitante.sql`](sql/001_add_campos_solicitante.sql) (idempotente, `ALTER TABLE ... ADD`).
 
 ## Endpoints
 
